@@ -1,0 +1,29 @@
+KEY=bQBFMPxm0m4hnUqm
+USERID=achyuthkumark2000
+
+URL=mongodb+srv://achyuthkumark2000:KEY=gDvc4IzXZu7OZkTo@cluster0.hmupkhb.mongodb.net
+
+GoogleClientId=449768873579-4r6icbjjoql733aj3v0ohhmmmm11lo5k.apps.googleusercontent.com
+
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBxeq08SzPpFhhbjreasEwaFnJX3oTObrM",
+  authDomain: "tracker-88ea9.firebaseapp.com",
+  projectId: "tracker-88ea9",
+  storageBucket: "tracker-88ea9.firebasestorage.app",
+  messagingSenderId: "449768873579",
+  appId: "1:449768873579:web:23b41598bcf347ed291b2e",
+  measurementId: "G-3YCCMSXFTQ"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);

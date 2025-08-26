@@ -1,0 +1,39 @@
+{
+  "name": "study-tracker-backend",
+  "version": "1.0.0",
+  "description": "Study Tracker Backend API",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@apollo/client": "^4.0.1",
+    "apollo-server-express": "^3.13.0",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "firebase-admin": "^11.11.1",
+    "google-auth-library": "^8.9.0",
+    "graphql": "^16.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.8.7",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "study",
+    "tracker",
+    "education",
+    "api",
+    "graphql"
+  ],
+  "author": "Achyuth Kumar",
+  "license": "MIT"
+}
