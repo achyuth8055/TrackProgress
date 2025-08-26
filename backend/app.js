@@ -8,8 +8,8 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import fetch from 'node-fetch';
 import connectDB from './config/db.js';
-import authResolver from './resolver/resolver.js'; // Fixed import path
-import User from './model/User.js'; // Fixed import path
+import authResolver from './resolvers/resolver.js'; // Fixed import path
+import User from './models/User.js'; // Fixed import path
 
 // Fix __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);

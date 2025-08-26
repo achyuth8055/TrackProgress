@@ -1,3 +1,4 @@
+// backend/model/User.js
 import mongoose from 'mongoose';
 
 // Task subdocument schema

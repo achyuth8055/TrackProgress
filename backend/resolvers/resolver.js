@@ -1224,4 +1224,642 @@ const resolvers = {
   },
 };
 
+// backend/resolver/resolver.js
+import User from '../model/User.js'; // Fixed import path
+import jwt from 'jsonwebtoken';
+import { AuthenticationError, ApolloError, ForbiddenError } from 'apollo-server-express';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Mock Firebase token verification for development
+const mockVerifyIdToken = async (idToken) => {
+  if (!idToken || idToken === 'invalid_token') {
+    throw new Error('Invalid token');
+  }
+  
+  // For development, allow any token that looks like an email
+  if (idToken.includes('@')) {
+    return {
+      uid: `firebase_${Buffer.from(idToken).toString('base64')}`,
+      name: idToken.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' '),
+      email: idToken,
+      picture: 'https://via.placeholder.com/100'
+    };
+  }
+
+  // Generate mock data for any other token
+  const mockUserData = {
+    uid: `firebase_${Date.now()}`,
+    name: 'Test User',
+    email: 'test@example.com',
+    picture: 'https://via.placeholder.com/100'
+  };
+
+  return mockUserData;
+};
+
+// Helper function to require authentication
+const requireAuth = (user) => {
+  if (!user) {
+    throw new AuthenticationError('You must be logged in to perform this action');
+  }
+  return user;
+};
+
+// Helper function to filter tasks
+const filterTasks = (tasks, filter, category, priority) => {
+  let filteredTasks = [...tasks];
+
+  // Filter by completion status and dates
+  switch (filter) {
+    case 'PENDING':
+      filteredTasks = filteredTasks.filter(task => !task.completed);
+      break;
+    case 'COMPLETED':
+      filteredTasks = filteredTasks.filter(task => task.completed);
+      break;
+    case 'OVERDUE':
+      const now = new Date();
+      filteredTasks = filteredTasks.filter(task => 
+        !task.completed && task.dueDate && new Date(task.dueDate) < now
+      );
+      break;
+    case 'TODAY':
+      const today = new Date();
+      const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+      const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+      filteredTasks = filteredTasks.filter(task => 
+        task.dueDate && 
+        new Date(task.dueDate) >= startOfToday && 
+        new Date(task.dueDate) <= endOfToday
+      );
+      break;
+    case 'THIS_WEEK':
+      const startOfWeek = new Date();
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(endOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      filteredTasks = filteredTasks.filter(task =>
+        task.dueDate &&
+        new Date(task.dueDate) >= startOfWeek &&
+        new Date(task.dueDate) <= endOfWeek
+      );
+      break;
+  }
+
+  // Filter by category
+  if (category) {
+    filteredTasks = filteredTasks.filter(task => 
+      task.category.toLowerCase() === category.toLowerCase()
+    );
+  }
+
+  // Filter by priority
+  if (priority) {
+    filteredTasks = filteredTasks.filter(task => task.priority === priority.toLowerCase());
+  }
+
+  return filteredTasks;
+};
+
+const resolvers = {
+  Query: {
+    me: async (_, __, { user }) => {
+      requireAuth(user);
+      
+      const userData = await User.findById(user.id).select('-__v');
+      if (!userData) {
+        throw new Error('User not found');
+      }
+
+      return {
+        id: userData._id.toString(),
+        firebaseUid: userData.firebaseUid,
+        name: userData.name,
+        email: userData.email,
+        avatar: userData.avatar,
+        tasks: userData.tasks.map(task => ({
+          id: task._id.toString(),
+          title: task.title,
+          description: task.description || '',
+          completed: task.completed,
+          priority: task.priority.toUpperCase(),
+          dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+          category: task.category,
+          tags: task.tags,
+          estimatedMinutes: task.estimatedMinutes,
+          createdAt: task.createdAt.toISOString(),
+          updatedAt: task.updatedAt.toISOString(),
+        })),
+        studySessions: userData.studySessions.map(session => ({
+          id: session._id.toString(),
+          subject: session.subject,
+          topic: session.topic,
+          duration: session.duration,
+          notes: session.notes || '',
+          difficulty: session.difficulty.toUpperCase(),
+          completed: session.completed,
+          startTime: session.startTime ? session.startTime.toISOString() : null,
+          endTime: session.endTime ? session.endTime.toISOString() : null,
+          createdAt: session.createdAt.toISOString(),
+          updatedAt: session.updatedAt.toISOString(),
+        })),
+        preferences: {
+          theme: userData.preferences.theme.toUpperCase(),
+          notifications: userData.preferences.notifications,
+          dailyStudyGoal: userData.preferences.dailyStudyGoal,
+          timezone: userData.preferences.timezone,
+        },
+        stats: {
+          totalStudyTime: userData.stats.totalStudyTime,
+          totalTasks: userData.stats.totalTasks,
+          completedTasks: userData.stats.completedTasks,
+          currentStreak: userData.stats.currentStreak,
+          longestStreak: userData.stats.longestStreak,
+          taskCompletionRate: userData.stats.totalTasks > 0 
+            ? (userData.stats.completedTasks / userData.stats.totalTasks) * 100 
+            : 0,
+          averageSessionDuration: userData.getStudyStats().averageSessionDuration,
+        },
+        createdAt: userData.createdAt.toISOString(),
+        updatedAt: userData.updatedAt.toISOString(),
+        lastLoginAt: userData.lastLoginAt ? userData.lastLoginAt.toISOString() : null,
+      };
+    },
+
+    tasks: async (_, { filter = 'ALL', category, priority, limit = 50, offset = 0 }, { user }) => {
+      requireAuth(user);
+      
+      const userData = await User.findById(user.id).select('tasks');
+      if (!userData) {
+        throw new Error('User not found');
+      }
+
+      const filteredTasks = filterTasks(userData.tasks, filter, category, priority);
+      const paginatedTasks = filteredTasks
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(offset, offset + limit);
+
+      return paginatedTasks.map(task => ({
+        id: task._id.toString(),
+        title: task.title,
+        description: task.description || '',
+        completed: task.completed,
+        priority: task.priority.toUpperCase(),
+        dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+        category: task.category,
+        tags: task.tags,
+        estimatedMinutes: task.estimatedMinutes,
+        createdAt: task.createdAt.toISOString(),
+        updatedAt: task.updatedAt.toISOString(),
+      }));
+    },
+
+    task: async (_, { id }, { user }) => {
+      requireAuth(user);
+      
+      const userData = await User.findById(user.id).select('tasks');
+      if (!userData) {
+        throw new Error('User not found');
+      }
+
+      const task = userData.tasks.id(id);
+      if (!task) {
+        throw new Error('Task not found');
+      }
+
+      return {
+        id: task._id.toString(),
+        title: task.title,
+        description: task.description || '',
+        completed: task.completed,
+        priority: task.priority.toUpperCase(),
+        dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+        category: task.category,
+        tags: task.tags,
+        estimatedMinutes: task.estimatedMinutes,
+        createdAt: task.createdAt.toISOString(),
+        updatedAt: task.updatedAt.toISOString(),
+      };
+    },
+
+    taskStats: async (_, __, { user }) => {
+      requireAuth(user);
+      
+      const userData = await User.findById(user.id).select('tasks');
+      if (!userData) {
+        throw new Error('User not found');
+      }
+
+      const tasks = userData.tasks;
+      const total = tasks.length;
+      const completed = tasks.filter(t => t.completed).length;
+      const pending = total - completed;
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      // Priority breakdown
+      const highPriority = tasks.filter(t => t.priority === 'high').length;
+      const mediumPriority = tasks.filter(t => t.priority === 'medium').length;
+      const lowPriority = tasks.filter(t => t.priority === 'low').length;
+
+      // Category breakdown
+      const categoryMap = new Map();
+      tasks.forEach(task => {
+        if (!categoryMap.has(task.category)) {
+          categoryMap.set(task.category, { total: 0, completed: 0 });
+        }
+        categoryMap.get(task.category).total++;
+        if (task.completed) {
+          categoryMap.get(task.category).completed++;
+        }
+      });
+
+      const byCategory = Array.from(categoryMap.entries()).map(([category, stats]) => ({
+        category,
+        count: stats.total,
+        completed: stats.completed,
+      }));
+
+      return {
+        total,
+        completed,
+        pending,
+        completionRate,
+        byPriority: {
+          high: highPriority,
+          medium: mediumPriority,
+          low: lowPriority,
+        },
+        byCategory,
+      };
+    },
+
+    studySessions: async (_, { limit = 20, offset = 0 }, { user }) => {
+      requireAuth(user);
+      
+      const userData = await User.findById(user.id).select('studySessions');
+      if (!userData) {
+        throw new Error('User not found');
+      }
+
+      const sessions = userData.studySessions
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(offset, offset + limit);
+
+      return sessions.map(session => ({
+        id: session._id.toString(),
+        subject: session.subject,
+        topic: session.topic,
+        duration: session.duration,
+        notes: session.notes || '',
+        difficulty: session.difficulty.toUpperCase(),
+        completed: session.completed,
+        startTime: session.startTime ? session.startTime.toISOString() : null,
+        endTime: session.endTime ? session.endTime.toISOString() : null,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt.toISOString(),
+      }));
+    },
+
+    recentSessions: async (_, { limit = 5 }, { user }) => {
+      requireAuth(user);
+      
+      const userData = await User.findById(user.id).select('studySessions');
+      if (!userData) {
+        throw new Error('User not found');
+      }
+
+      const recentSessions = userData.studySessions
+        .filter(session => session.completed)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, limit);
+
+      return recentSessions.map(session => ({
+        id: session._id.toString(),
+        subject: session.subject,
+        topic: session.topic,
+        duration: session.duration,
+        notes: session.notes || '',
+        difficulty: session.difficulty.toUpperCase(),
+        completed: session.completed,
+        startTime: session.startTime ? session.startTime.toISOString() : null,
+        endTime: session.endTime ? session.endTime.toISOString() : null,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt.toISOString(),
+      }));
+    },
+
+    health: () => "Server is running!"
+  },
+
+  Mutation: {
+    loginWithGoogle: async (_, { idToken }) => {
+      if (!idToken || typeof idToken !== 'string' || idToken.trim() === '') {
+        throw new ApolloError('Invalid or missing ID token', 'INVALID_INPUT');
+      }
+
+      try {
+        console.log(`🔐 Attempting authentication with token: ${idToken.substring(0, 20)}...`);
+
+        const decodedToken = await mockVerifyIdToken(idToken.trim());
+        const { uid, name, email, picture } = decodedToken;
+
+        console.log(`👤 Authenticating user: ${email}`);
+
+        let user = await User.findOne({ firebaseUid: uid });
+        
+        if (!user) {
+          user = new User({
+            firebaseUid: uid,
+            name: name || email.split('@')[0],
+            email,
+            avatar: picture || '',
+            lastLoginAt: new Date()
+          });
+          await user.save();
+          console.log(`✨ Created new user: ${user.email} (${user._id})`);
+        } else {
+          user.lastLoginAt = new Date();
+          if (picture && picture !== user.avatar) {
+            user.avatar = picture;
+          }
+          if (name && name !== user.name) {
+            user.name = name;
+          }
+          await user.save();
+          console.log(`🔄 Updated existing user: ${user.email} (${user._id})`);
+        }
+
+        const tokenPayload = {
+          userId: user._id.toString(),
+          email: user.email,
+          firebaseUid: user.firebaseUid
+        };
+
+        const token = jwt.sign(
+          tokenPayload,
+          process.env.JWT_SECRET || 'fallback_jwt_secret_for_development',
+          { 
+            expiresIn: '7d',
+            issuer: 'studytracker-api',
+            audience: 'studytracker-app'
+          }
+        );
+
+        const authPayload = {
+          token,
+          user: {
+            id: user._id.toString(),
+            firebaseUid: user.firebaseUid,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar,
+            tasks: user.tasks.map(task => ({
+              id: task._id.toString(),
+              title: task.title,
+              description: task.description || '',
+              completed: task.completed,
+              priority: task.priority.toUpperCase(),
+              dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+              category: task.category,
+              tags: task.tags,
+              estimatedMinutes: task.estimatedMinutes,
+              createdAt: task.createdAt.toISOString(),
+              updatedAt: task.updatedAt.toISOString(),
+            })),
+            studySessions: user.studySessions.map(session => ({
+              id: session._id.toString(),
+              subject: session.subject,
+              topic: session.topic,
+              duration: session.duration,
+              notes: session.notes || '',
+              difficulty: session.difficulty.toUpperCase(),
+              completed: session.completed,
+              startTime: session.startTime ? session.startTime.toISOString() : null,
+              endTime: session.endTime ? session.endTime.toISOString() : null,
+              createdAt: session.createdAt.toISOString(),
+              updatedAt: session.updatedAt.toISOString(),
+            })),
+            preferences: {
+              theme: user.preferences.theme.toUpperCase(),
+              notifications: user.preferences.notifications,
+              dailyStudyGoal: user.preferences.dailyStudyGoal,
+              timezone: user.preferences.timezone,
+            },
+            stats: {
+              totalStudyTime: user.stats.totalStudyTime,
+              totalTasks: user.stats.totalTasks,
+              completedTasks: user.stats.completedTasks,
+              currentStreak: user.stats.currentStreak,
+              longestStreak: user.stats.longestStreak,
+              taskCompletionRate: user.stats.totalTasks > 0 
+                ? (user.stats.completedTasks / user.stats.totalTasks) * 100 
+                : 0,
+              averageSessionDuration: user.getStudyStats().averageSessionDuration,
+            },
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+            lastLoginAt: user.lastLoginAt.toISOString(),
+          },
+        };
+
+        console.log(`✅ Authentication successful for ${user.email}`);
+        return authPayload;
+
+      } catch (error) {
+        console.error('❌ Login error:', error);
+
+        if (error.message.includes('Invalid token') || error.message.includes('auth/')) {
+          throw new AuthenticationError('Invalid Google ID token provided');
+        }
+
+        if (error.name === 'ValidationError') {
+          throw new ApolloError(`User validation failed: ${error.message}`, 'VALIDATION_ERROR');
+        }
+
+        if (error.code === 11000) {
+          throw new ApolloError('User with this email already exists', 'USER_EXISTS');
+        }
+
+        throw new ApolloError('Authentication failed. Please try again.', 'AUTH_FAILED');
+      }
+    },
+
+    createTask: async (_, { input }, { user }) => {
+      requireAuth(user);
+
+      try {
+        const userData = await User.findById(user.id);
+        if (!userData) {
+          throw new Error('User not found');
+        }
+
+        const taskData = {
+          title: input.title.trim(),
+          description: input.description?.trim() || '',
+          priority: input.priority?.toLowerCase() || 'medium',
+          dueDate: input.dueDate ? new Date(input.dueDate) : null,
+          category: input.category || 'general',
+          tags: input.tags || [],
+          estimatedMinutes: input.estimatedMinutes || null,
+        };
+
+        userData.tasks.push(taskData);
+        await userData.save();
+
+        const newTask = userData.tasks[userData.tasks.length - 1];
+
+        console.log(`✅ Created task: ${newTask.title} for user ${user.id}`);
+
+        return {
+          id: newTask._id.toString(),
+          title: newTask.title,
+          description: newTask.description,
+          completed: newTask.completed,
+          priority: newTask.priority.toUpperCase(),
+          dueDate: newTask.dueDate ? newTask.dueDate.toISOString() : null,
+          category: newTask.category,
+          tags: newTask.tags,
+          estimatedMinutes: newTask.estimatedMinutes,
+          createdAt: newTask.createdAt.toISOString(),
+          updatedAt: newTask.updatedAt.toISOString(),
+        };
+
+      } catch (error) {
+        console.error('❌ Create task error:', error);
+        
+        if (error.name === 'ValidationError') {
+          throw new ApolloError(`Task validation failed: ${error.message}`, 'VALIDATION_ERROR');
+        }
+
+        throw new ApolloError('Failed to create task. Please try again.', 'CREATE_TASK_FAILED');
+      }
+    },
+
+    updateTask: async (_, { id, input }, { user }) => {
+      requireAuth(user);
+
+      try {
+        const userData = await User.findById(user.id);
+        if (!userData) {
+          throw new Error('User not found');
+        }
+
+        const task = userData.tasks.id(id);
+        if (!task) {
+          throw new Error('Task not found');
+        }
+
+        // Update only provided fields
+        if (input.title !== undefined) task.title = input.title.trim();
+        if (input.description !== undefined) task.description = input.description?.trim() || '';
+        if (input.completed !== undefined) task.completed = input.completed;
+        if (input.priority !== undefined) task.priority = input.priority.toLowerCase();
+        if (input.dueDate !== undefined) task.dueDate = input.dueDate ? new Date(input.dueDate) : null;
+        if (input.category !== undefined) task.category = input.category;
+        if (input.tags !== undefined) task.tags = input.tags || [];
+        if (input.estimatedMinutes !== undefined) task.estimatedMinutes = input.estimatedMinutes;
+
+        await userData.save();
+
+        console.log(`✅ Updated task: ${task.title} for user ${user.id}`);
+
+        return {
+          id: task._id.toString(),
+          title: task.title,
+          description: task.description,
+          completed: task.completed,
+          priority: task.priority.toUpperCase(),
+          dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+          category: task.category,
+          tags: task.tags,
+          estimatedMinutes: task.estimatedMinutes,
+          createdAt: task.createdAt.toISOString(),
+          updatedAt: task.updatedAt.toISOString(),
+        };
+
+      } catch (error) {
+        console.error('❌ Update task error:', error);
+        
+        if (error.name === 'ValidationError') {
+          throw new ApolloError(`Task validation failed: ${error.message}`, 'VALIDATION_ERROR');
+        }
+
+        throw new ApolloError('Failed to update task. Please try again.', 'UPDATE_TASK_FAILED');
+      }
+    },
+
+    deleteTask: async (_, { id }, { user }) => {
+      requireAuth(user);
+
+      try {
+        const userData = await User.findById(user.id);
+        if (!userData) {
+          throw new Error('User not found');
+        }
+
+        const task = userData.tasks.id(id);
+        if (!task) {
+          throw new Error('Task not found');
+        }
+
+        task.deleteOne();
+        await userData.save();
+
+        console.log(`✅ Deleted task: ${id} for user ${user.id}`);
+        return true;
+
+      } catch (error) {
+        console.error('❌ Delete task error:', error);
+        throw new ApolloError('Failed to delete task. Please try again.', 'DELETE_TASK_FAILED');
+      }
+    },
+
+    toggleTaskComplete: async (_, { id }, { user }) => {
+      requireAuth(user);
+
+      try {
+        const userData = await User.findById(user.id);
+        if (!userData) {
+          throw new Error('User not found');
+        }
+
+        const task = userData.tasks.id(id);
+        if (!task) {
+          throw new Error('Task not found');
+        }
+
+        task.completed = !task.completed;
+        await userData.save();
+
+        console.log(`✅ Toggled task completion: ${task.title} -> ${task.completed} for user ${user.id}`);
+
+        return {
+          id: task._id.toString(),
+          title: task.title,
+          description: task.description,
+          completed: task.completed,
+          priority: task.priority.toUpperCase(),
+          dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+          category: task.category,
+          tags: task.tags,
+          estimatedMinutes: task.estimatedMinutes,
+          createdAt: task.createdAt.toISOString(),
+          updatedAt: task.updatedAt.toISOString(),
+        };
+
+      } catch (error) {
+        console.error('❌ Toggle task error:', error);
+        throw new ApolloError('Failed to toggle task completion. Please try again.', 'TOGGLE_TASK_FAILED');
+      }
+    },
+
+    // ... (rest of mutations would continue here)
+    
+  },
+};
+
 export default resolvers;

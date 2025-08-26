@@ -1,9 +1,9 @@
+// frontend/src/pages/dashboard.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "../App.js";
 import { useAuth } from "../contexts/AuthContext.js";
 import apiService from "../services/api.js";
-import "../styles.css";
 
 const TaskItem = ({ task, onToggle, onEdit, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -33,12 +33,12 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete }) => {
     setIsEditing(false);
   };
 
-  const getPriorityColor = (priority) => {
+  const getPriorityBadge = (priority) => {
     switch (priority?.toLowerCase()) {
-      case 'high': return '#ff4757';
-      case 'medium': return '#ffa502';
-      case 'low': return '#2ed573';
-      default: return '#747d8c';
+      case 'high': return 'danger';
+      case 'medium': return 'warning';
+      case 'low': return 'success';
+      default: return 'secondary';
     }
   };
 
@@ -49,103 +49,126 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete }) => {
     const diffTime = date.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return 'Overdue';
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays <= 7) return `${diffDays} days`;
-    return date.toLocaleDateString();
+    if (diffDays < 0) return { text: 'Overdue', class: 'text-danger' };
+    if (diffDays === 0) return { text: 'Today', class: 'text-warning' };
+    if (diffDays === 1) return { text: 'Tomorrow', class: 'text-info' };
+    if (diffDays <= 7) return { text: `${diffDays} days`, class: 'text-muted' };
+    return { text: date.toLocaleDateString(), class: 'text-muted' };
   };
 
   if (isEditing) {
     return (
-      <div className="task-item editing">
-        <div className="task-edit-form">
-          <input
-            type="text"
-            value={editData.title}
-            onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-            placeholder="Task title"
-            className="task-title-input"
-          />
-          <textarea
-            value={editData.description}
-            onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-            placeholder="Task description (optional)"
-            className="task-description-input"
-            rows="2"
-          />
-          <div className="task-edit-controls">
-            <select
-              value={editData.priority}
-              onChange={(e) => setEditData({ ...editData, priority: e.target.value })}
-              className="priority-select"
-            >
-              <option value="low">Low Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="high">High Priority</option>
-            </select>
+      <div className="card mb-3 border-primary">
+        <div className="card-body">
+          <div className="mb-3">
+            <label className="form-label">Task Title</label>
             <input
               type="text"
-              value={editData.category}
-              onChange={(e) => setEditData({ ...editData, category: e.target.value })}
-              placeholder="Category"
-              className="category-input"
+              className="form-control"
+              value={editData.title}
+              onChange={(e) => setEditData({ ...editData, title: e.target.value })}
+              placeholder="Task title"
             />
           </div>
-          <div className="task-edit-actions">
-            <button onClick={handleSave} className="btn btn-primary btn-sm">Save</button>
-            <button onClick={handleCancel} className="btn btn-secondary btn-sm">Cancel</button>
+          <div className="mb-3">
+            <label className="form-label">Description</label>
+            <textarea
+              className="form-control"
+              rows="2"
+              value={editData.description}
+              onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+              placeholder="Task description (optional)"
+            />
+          </div>
+          <div className="row">
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Priority</label>
+              <select
+                className="form-select"
+                value={editData.priority}
+                onChange={(e) => setEditData({ ...editData, priority: e.target.value })}
+              >
+                <option value="low">Low Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="high">High Priority</option>
+              </select>
+            </div>
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Category</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editData.category}
+                onChange={(e) => setEditData({ ...editData, category: e.target.value })}
+                placeholder="Category"
+              />
+            </div>
+          </div>
+          <div className="d-flex gap-2">
+            <button onClick={handleSave} className="btn btn-primary btn-sm">
+              <i className="fas fa-save me-2"></i>Save
+            </button>
+            <button onClick={handleCancel} className="btn btn-secondary btn-sm">
+              <i className="fas fa-times me-2"></i>Cancel
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
+  const dueDate = formatDate(task.dueDate);
+
   return (
-    <div className={`task-item ${task.completed ? 'completed' : ''}`}>
-      <div className="task-main">
-        <input
-          type="checkbox"
-          checked={task.completed}
-          onChange={() => onToggle(task.id)}
-          className="task-checkbox"
-        />
-        <div className="task-content">
-          <h4 className="task-title">{task.title}</h4>
-          {task.description && (
-            <p className="task-description">{task.description}</p>
-          )}
-          <div className="task-meta">
-            <span 
-              className="task-priority"
-              style={{ color: getPriorityColor(task.priority) }}
-            >
-              {task.priority?.toUpperCase() || 'MEDIUM'}
-            </span>
-            <span className="task-category">{task.category}</span>
-            {task.dueDate && (
-              <span className={`task-due-date ${formatDate(task.dueDate) === 'Overdue' ? 'overdue' : ''}`}>
-                {formatDate(task.dueDate)}
-              </span>
+    <div className={`card mb-3 ${task.completed ? 'opacity-75' : ''}`}>
+      <div className="card-body">
+        <div className="d-flex align-items-start">
+          <div className="form-check me-3">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              checked={task.completed}
+              onChange={() => onToggle(task.id)}
+            />
+          </div>
+          <div className="flex-grow-1">
+            <h6 className={`card-title mb-1 ${task.completed ? 'text-decoration-line-through' : ''}`}>
+              {task.title}
+            </h6>
+            {task.description && (
+              <p className="card-text small text-muted mb-2">{task.description}</p>
             )}
+            <div className="d-flex flex-wrap gap-2 align-items-center">
+              <span className={`badge bg-${getPriorityBadge(task.priority)}`}>
+                {task.priority?.toUpperCase() || 'MEDIUM'}
+              </span>
+              <span className="badge bg-light text-dark">{task.category}</span>
+              {dueDate && (
+                <span className={`small ${dueDate.class}`}>
+                  <i className="fas fa-calendar-alt me-1"></i>
+                  {dueDate.text}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="dropdown">
+            <button className="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+              <i className="fas fa-ellipsis-v"></i>
+            </button>
+            <ul className="dropdown-menu">
+              <li>
+                <button className="dropdown-item" onClick={() => setIsEditing(true)}>
+                  <i className="fas fa-edit me-2"></i>Edit
+                </button>
+              </li>
+              <li>
+                <button className="dropdown-item text-danger" onClick={() => onDelete(task.id)}>
+                  <i className="fas fa-trash me-2"></i>Delete
+                </button>
+              </li>
+            </ul>
           </div>
         </div>
-      </div>
-      <div className="task-actions">
-        <button
-          onClick={() => setIsEditing(true)}
-          className="btn btn-ghost btn-sm"
-          aria-label="Edit task"
-        >
-          ✏️
-        </button>
-        <button
-          onClick={() => onDelete(task.id)}
-          className="btn btn-ghost btn-sm"
-          aria-label="Delete task"
-        >
-          🗑️
-        </button>
       </div>
     </div>
   );
@@ -186,102 +209,121 @@ const AddTaskModal = ({ isOpen, onClose, onAdd }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2>Add New Task</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="input-group">
-            <label htmlFor="task-title">Title *</label>
-            <input
-              id="task-title"
-              type="text"
-              value={taskData.title}
-              onChange={(e) => setTaskData({ ...taskData, title: e.target.value })}
-              placeholder="What do you need to do?"
-              required
-              disabled={loading}
-            />
+    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="modal-dialog">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">
+              <i className="fas fa-plus-circle me-2 text-primary"></i>
+              Add New Task
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
-          
-          <div className="input-group">
-            <label htmlFor="task-description">Description</label>
-            <textarea
-              id="task-description"
-              value={taskData.description}
-              onChange={(e) => setTaskData({ ...taskData, description: e.target.value })}
-              placeholder="Additional details (optional)"
-              rows="3"
-              disabled={loading}
-            />
-          </div>
-          
-          <div className="form-row">
-            <div className="input-group">
-              <label htmlFor="task-priority">Priority</label>
-              <select
-                id="task-priority"
-                value={taskData.priority}
-                onChange={(e) => setTaskData({ ...taskData, priority: e.target.value })}
-                disabled={loading}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body">
+              <div className="mb-3">
+                <label className="form-label">Title *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={taskData.title}
+                  onChange={(e) => setTaskData({ ...taskData, title: e.target.value })}
+                  placeholder="What do you need to do?"
+                  required
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="mb-3">
+                <label className="form-label">Description</label>
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  value={taskData.description}
+                  onChange={(e) => setTaskData({ ...taskData, description: e.target.value })}
+                  placeholder="Additional details (optional)"
+                  disabled={loading}
+                />
+              </div>
+              
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Priority</label>
+                  <select
+                    className="form-select"
+                    value={taskData.priority}
+                    onChange={(e) => setTaskData({ ...taskData, priority: e.target.value })}
+                    disabled={loading}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                
+                <div className="col-md-6 mb-3">
+                  <label className="form-label">Category</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={taskData.category}
+                    onChange={(e) => setTaskData({ ...taskData, category: e.target.value })}
+                    placeholder="e.g., Work, Study, Personal"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-3">
+                <label className="form-label">Due Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={taskData.dueDate}
+                  onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
+                  disabled={loading}
+                />
+              </div>
             </div>
-            
-            <div className="input-group">
-              <label htmlFor="task-category">Category</label>
-              <input
-                id="task-category"
-                type="text"
-                value={taskData.category}
-                onChange={(e) => setTaskData({ ...taskData, category: e.target.value })}
-                placeholder="e.g., Work, Study, Personal"
-                disabled={loading}
-              />
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={loading || !taskData.title.trim()}>
+                {loading ? (
+                  <>
+                    <div className="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-plus me-2"></i>
+                    Add Task
+                  </>
+                )}
+              </button>
             </div>
-          </div>
-          
-          <div className="input-group">
-            <label htmlFor="task-due-date">Due Date</label>
-            <input
-              id="task-due-date"
-              type="date"
-              value={taskData.dueDate}
-              onChange={(e) => setTaskData({ ...taskData, dueDate: e.target.value })}
-              disabled={loading}
-            />
-          </div>
-          
-          <div className="modal-actions">
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="btn btn-secondary"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="btn btn-primary"
-              disabled={loading || !taskData.title.trim()}
-            >
-              {loading ? 'Adding...' : 'Add Task'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
 const LoadingSkeleton = () => (
-  <div className="loading-skeleton">
-    <div className="skeleton-item"></div>
-    <div className="skeleton-item"></div>
-    <div className="skeleton-item"></div>
+  <div className="container-fluid">
+    {[...Array(3)].map((_, i) => (
+      <div key={i} className="card mb-3">
+        <div className="card-body">
+          <div className="placeholder-glow">
+            <span className="placeholder col-6"></span>
+            <span className="placeholder col-4"></span>
+            <span className="placeholder col-4"></span>
+            <span className="placeholder col-6"></span>
+          </div>
+        </div>
+      </div>
+    ))}
   </div>
 );
 
@@ -555,7 +597,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <AppLayout pageTitle="Dashboard">
-        <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
+        <div className="container-fluid py-4">
           <LoadingSkeleton />
         </div>
       </AppLayout>
@@ -564,160 +606,228 @@ export default function Dashboard() {
 
   return (
     <AppLayout pageTitle="Dashboard">
-      <div className="dashboard-container">
+      <div className="container-fluid py-4">
         {/* Welcome Section */}
-        <div className="welcome-section">
-          <h1>Welcome back, {user?.name || 'Student'}! 👋</h1>
-          <p>Here's what you have on your plate today.</p>
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <h1 className="h3 mb-0">
+                  Welcome back, {user?.name || 'Student'}! 
+                  <span className="ms-2">👋</span>
+                </h1>
+                <p className="text-muted mb-0">Here's what you have on your plate today.</p>
+              </div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="btn btn-primary"
+              >
+                <i className="fas fa-plus me-2"></i>
+                Add Task
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">📋</div>
-            <div className="stat-content">
-              <div className="stat-number">{stats.total}</div>
-              <div className="stat-label">Total Tasks</div>
+        <div className="row g-3 mb-4">
+          <div className="col-lg-3 col-md-6">
+            <div className="card text-center border-0 shadow-sm">
+              <div className="card-body">
+                <div className="display-6 mb-2">📋</div>
+                <div className="h2 mb-0">{stats.total}</div>
+                <div className="text-muted">Total Tasks</div>
+              </div>
             </div>
           </div>
           
-          <div className="stat-card">
-            <div className="stat-icon">✅</div>
-            <div className="stat-content">
-              <div className="stat-number">{stats.completed}</div>
-              <div className="stat-label">Completed</div>
+          <div className="col-lg-3 col-md-6">
+            <div className="card text-center border-0 shadow-sm">
+              <div className="card-body">
+                <div className="display-6 mb-2">✅</div>
+                <div className="h2 mb-0 text-success">{stats.completed}</div>
+                <div className="text-muted">Completed</div>
+              </div>
             </div>
           </div>
           
-          <div className="stat-card">
-            <div className="stat-icon">⏳</div>
-            <div className="stat-content">
-              <div className="stat-number">{stats.pending}</div>
-              <div className="stat-label">Pending</div>
+          <div className="col-lg-3 col-md-6">
+            <div className="card text-center border-0 shadow-sm">
+              <div className="card-body">
+                <div className="display-6 mb-2">⏳</div>
+                <div className="h2 mb-0 text-warning">{stats.pending}</div>
+                <div className="text-muted">Pending</div>
+              </div>
             </div>
           </div>
           
-          <div className="stat-card">
-            <div className="stat-icon">📊</div>
-            <div className="stat-content">
-              <div className="stat-number">{stats.completionRate}%</div>
-              <div className="stat-label">Completion Rate</div>
+          <div className="col-lg-3 col-md-6">
+            <div className="card text-center border-0 shadow-sm">
+              <div className="card-body">
+                <div className="display-6 mb-2">📊</div>
+                <div className="h2 mb-0 text-info">{stats.completionRate}%</div>
+                <div className="text-muted">Completion Rate</div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Task Management Section */}
-        <div className="tasks-section">
-          <div className="tasks-header">
-            <h2>Your Tasks</h2>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn btn-primary"
-            >
-              + Add Task
-            </button>
-          </div>
-
-          {/* Task Filters */}
-          <div className="task-filters">
-            <button
-              className={`filter-btn ${filter === 'ALL' ? 'active' : ''}`}
-              onClick={() => setFilter('ALL')}
-            >
-              All ({filterCounts.all})
-            </button>
-            <button
-              className={`filter-btn ${filter === 'PENDING' ? 'active' : ''}`}
-              onClick={() => setFilter('PENDING')}
-            >
-              Pending ({filterCounts.pending})
-            </button>
-            <button
-              className={`filter-btn ${filter === 'COMPLETED' ? 'active' : ''}`}
-              onClick={() => setFilter('COMPLETED')}
-            >
-              Completed ({filterCounts.completed})
-            </button>
-            <button
-              className={`filter-btn ${filter === 'TODAY' ? 'active' : ''}`}
-              onClick={() => setFilter('TODAY')}
-            >
-              Due Today ({filterCounts.today})
-            </button>
-            {filterCounts.overdue > 0 && (
-              <button
-                className={`filter-btn overdue ${filter === 'OVERDUE' ? 'active' : ''}`}
-                onClick={() => setFilter('OVERDUE')}
-              >
-                Overdue ({filterCounts.overdue})
-              </button>
-            )}
-          </div>
-
-          {/* Task List */}
-          <div className="task-list">
-            {error ? (
-              <div className="error-message">
-                {error}
-                <button onClick={loadTasks} className="btn btn-secondary btn-sm">
-                  Try Again
-                </button>
+        <div className="row">
+          <div className="col-12">
+            <div className="card border-0 shadow-sm">
+              <div className="card-header bg-transparent border-0 py-3">
+                <div className="d-flex align-items-center justify-content-between">
+                  <h5 className="mb-0">
+                    <i className="fas fa-tasks me-2 text-primary"></i>
+                    Your Tasks
+                  </h5>
+                </div>
               </div>
-            ) : filteredTasks.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">📝</div>
-                <h3>No tasks found</h3>
-                <p>
-                  {filter === 'ALL' 
-                    ? "You don't have any tasks yet. Create your first task to get started!" 
-                    : `No tasks match the "${filter.toLowerCase()}" filter.`
-                  }
-                </p>
-                {filter === 'ALL' && (
+
+              <div className="card-body">
+                {/* Task Filters */}
+                <div className="d-flex flex-wrap gap-2 mb-4">
                   <button
-                    onClick={() => setShowAddModal(true)}
-                    className="btn btn-primary"
+                    className={`btn btn-sm ${filter === 'ALL' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setFilter('ALL')}
                   >
-                    Create Your First Task
+                    All ({filterCounts.all})
                   </button>
+                  <button
+                    className={`btn btn-sm ${filter === 'PENDING' ? 'btn-warning' : 'btn-outline-warning'}`}
+                    onClick={() => setFilter('PENDING')}
+                  >
+                    Pending ({filterCounts.pending})
+                  </button>
+                  <button
+                    className={`btn btn-sm ${filter === 'COMPLETED' ? 'btn-success' : 'btn-outline-success'}`}
+                    onClick={() => setFilter('COMPLETED')}
+                  >
+                    Completed ({filterCounts.completed})
+                  </button>
+                  <button
+                    className={`btn btn-sm ${filter === 'TODAY' ? 'btn-info' : 'btn-outline-info'}`}
+                    onClick={() => setFilter('TODAY')}
+                  >
+                    Due Today ({filterCounts.today})
+                  </button>
+                  {filterCounts.overdue > 0 && (
+                    <button
+                      className={`btn btn-sm ${filter === 'OVERDUE' ? 'btn-danger' : 'btn-outline-danger'}`}
+                      onClick={() => setFilter('OVERDUE')}
+                    >
+                      Overdue ({filterCounts.overdue})
+                    </button>
+                  )}
+                </div>
+
+                {/* Task List */}
+                {error ? (
+                  <div className="alert alert-danger d-flex align-items-center">
+                    <i className="fas fa-exclamation-triangle me-2"></i>
+                    <div>
+                      {error}
+                      <button onClick={loadTasks} className="btn btn-sm btn-outline-danger ms-3">
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
+                ) : filteredTasks.length === 0 ? (
+                  <div className="text-center py-5">
+                    <div className="display-1 mb-3">📝</div>
+                    <h4>No tasks found</h4>
+                    <p className="text-muted mb-4">
+                      {filter === 'ALL' 
+                        ? "You don't have any tasks yet. Create your first task to get started!" 
+                        : `No tasks match the "${filter.toLowerCase()}" filter.`
+                      }
+                    </p>
+                    {filter === 'ALL' && (
+                      <button
+                        onClick={() => setShowAddModal(true)}
+                        className="btn btn-primary"
+                      >
+                        <i className="fas fa-plus me-2"></i>
+                        Create Your First Task
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="row">
+                    <div className="col-12">
+                      {filteredTasks.map(task => (
+                        <TaskItem
+                          key={task.id}
+                          task={task}
+                          onToggle={handleToggleTask}
+                          onEdit={handleEditTask}
+                          onDelete={handleDeleteTask}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            ) : (
-              filteredTasks.map(task => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onToggle={handleToggleTask}
-                  onEdit={handleEditTask}
-                  onDelete={handleDeleteTask}
-                />
-              ))
-            )}
+            </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="quick-actions">
-          <h3>Quick Actions</h3>
-          <div className="action-buttons">
-            <button 
-              onClick={() => navigate("/studyplan")} 
-              className="btn btn-outline"
-            >
-              📅 Study Plan
-            </button>
-            <button 
-              onClick={() => navigate("/topics")} 
-              className="btn btn-outline"
-            >
-              📚 Topics
-            </button>
-            <button 
-              onClick={() => navigate("/quickanswer")} 
-              className="btn btn-outline"
-            >
-              💡 Quick Help
-            </button>
+        <div className="row mt-4">
+          <div className="col-12">
+            <div className="card border-0 shadow-sm">
+              <div className="card-header bg-transparent border-0">
+                <h5 className="mb-0">
+                  <i className="fas fa-bolt me-2 text-warning"></i>
+                  Quick Actions
+                </h5>
+              </div>
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="col-md-3">
+                    <button 
+                      onClick={() => navigate("/studyplan")} 
+                      className="btn btn-outline-primary w-100 py-3"
+                    >
+                      <i className="fas fa-calendar-alt d-block mb-2 fs-4"></i>
+                      <div className="fw-semibold">Study Plan</div>
+                      <small className="text-muted">Plan your learning</small>
+                    </button>
+                  </div>
+                  <div className="col-md-3">
+                    <button 
+                      onClick={() => navigate("/topics")} 
+                      className="btn btn-outline-success w-100 py-3"
+                    >
+                      <i className="fas fa-book d-block mb-2 fs-4"></i>
+                      <div className="fw-semibold">Topics</div>
+                      <small className="text-muted">Browse subjects</small>
+                    </button>
+                  </div>
+                  <div className="col-md-3">
+                    <button 
+                      onClick={() => navigate("/studygroups")} 
+                      className="btn btn-outline-info w-100 py-3"
+                    >
+                      <i className="fas fa-users d-block mb-2 fs-4"></i>
+                      <div className="fw-semibold">Study Groups</div>
+                      <small className="text-muted">Join discussions</small>
+                    </button>
+                  </div>
+                  <div className="col-md-3">
+                    <button 
+                      onClick={() => navigate("/quickanswer")} 
+                      className="btn btn-outline-warning w-100 py-3"
+                    >
+                      <i className="fas fa-lightbulb d-block mb-2 fs-4"></i>
+                      <div className="fw-semibold">Quick Help</div>
+                      <small className="text-muted">Get instant answers</small>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
