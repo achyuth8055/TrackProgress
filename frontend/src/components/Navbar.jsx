@@ -22,7 +22,7 @@ const Navbar = ({ theme, toggleTheme, isAuthenticated, setIsAuthenticated }) => 
         <BootstrapNavbar.Toggle aria-controls="basic-navbar-nav" />
         <BootstrapNavbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
-            {isAuthenticated && (
+            {!isAuthenticated && (
               <>
                 <Nav.Link as={NavLink} to="/dashboard">
                   Dashboard
