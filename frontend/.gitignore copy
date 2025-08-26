@@ -1,0 +1,8 @@
+# Dependencies
+/node_modules
+
+# Secret Files
+serviceAccountKey.json
+
+*.env
+
