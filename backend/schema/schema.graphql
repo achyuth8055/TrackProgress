@@ -5,8 +5,84 @@ type User {
   name: String!
   email: String!
   avatar: String
+  tasks: [Task!]!
+  studySessions: [StudySession!]!
+  preferences: UserPreferences!
+  stats: UserStats!
   createdAt: String!
   updatedAt: String!
+  lastLoginAt: String
+}
+
+# Task Type
+type Task {
+  id: ID!
+  title: String!
+  description: String
+  completed: Boolean!
+  priority: Priority!
+  dueDate: String
+  category: String!
+  tags: [String!]!
+  estimatedMinutes: Int
+  createdAt: String!
+  updatedAt: String!
+}
+
+# Study Session Type
+type StudySession {
+  id: ID!
+  subject: String!
+  topic: String!
+  duration: Int! # in minutes
+  notes: String
+  difficulty: Difficulty!
+  completed: Boolean!
+  startTime: String
+  endTime: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+# User Preferences Type
+type UserPreferences {
+  theme: Theme!
+  notifications: Boolean!
+  dailyStudyGoal: Int!
+  timezone: String!
+}
+
+# User Statistics Type
+type UserStats {
+  totalStudyTime: Int!
+  totalTasks: Int!
+  completedTasks: Int!
+  currentStreak: Int!
+  longestStreak: Int!
+  taskCompletionRate: Float!
+  averageSessionDuration: Float!
+}
+
+# Task Statistics Type
+type TaskStats {
+  total: Int!
+  completed: Int!
+  pending: Int!
+  completionRate: Int!
+  byPriority: PriorityStats!
+  byCategory: [CategoryStats!]!
+}
+
+type PriorityStats {
+  high: Int!
+  medium: Int!
+  low: Int!
+}
+
+type CategoryStats {
+  category: String!
+  count: Int!
+  completed: Int!
 }
 
 # Authentication Payload
@@ -15,67 +91,13 @@ type AuthPayload {
   user: User!
 }
 
-# Study Session Type
-type StudySession {
-  id: ID!
-  userId: ID!
-  subject: String!
-  topic: String!
-  duration: Int! # in minutes
-  notes: String
-  difficulty: Difficulty!
-  completed: Boolean!
-  createdAt: String!
-  updatedAt: String!
-}
-
-# Study Goal Type
-type StudyGoal {
-  id: ID!
-  userId: ID!
-  title: String!
-  description: String
-  targetHours: Float!
-  currentHours: Float!
-  deadline: String
-  completed: Boolean!
-  createdAt: String!
-  updatedAt: String!
-}
-
-# Subject Type
-type Subject {
-  id: ID!
-  userId: ID!
-  name: String!
-  color: String
-  totalHours: Float!
-  sessionsCount: Int!
-  createdAt: String!
-  updatedAt: String!
-}
-
-# Study Statistics Type
-type StudyStats {
-  totalHours: Float!
-  totalSessions: Int!
-  averageSessionDuration: Float!
-  currentStreak: Int!
-  longestStreak: Int!
-  todayHours: Float!
-  weekHours: Float!
-  monthHours: Float!
-  subjectBreakdown: [SubjectStats!]!
-}
-
-type SubjectStats {
-  subject: String!
-  hours: Float!
-  sessions: Int!
-  percentage: Float!
-}
-
 # Enums
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 enum Difficulty {
   EASY
   MEDIUM
@@ -83,21 +105,49 @@ enum Difficulty {
   EXPERT
 }
 
-enum TimeRange {
+enum Theme {
+  LIGHT
+  DARK
+}
+
+enum TaskFilter {
+  ALL
+  PENDING
+  COMPLETED
+  OVERDUE
   TODAY
-  WEEK
-  MONTH
-  YEAR
-  ALL_TIME
+  THIS_WEEK
 }
 
 # Input Types
+input TaskInput {
+  title: String!
+  description: String
+  priority: Priority = MEDIUM
+  dueDate: String
+  category: String = "general"
+  tags: [String!] = []
+  estimatedMinutes: Int
+}
+
+input TaskUpdateInput {
+  title: String
+  description: String
+  completed: Boolean
+  priority: Priority
+  dueDate: String
+  category: String
+  tags: [String!]
+  estimatedMinutes: Int
+}
+
 input StudySessionInput {
   subject: String!
   topic: String!
   duration: Int!
   notes: String
   difficulty: Difficulty!
+  completed: Boolean = false
 }
 
 input StudySessionUpdateInput {
@@ -107,149 +157,83 @@ input StudySessionUpdateInput {
   notes: String
   difficulty: Difficulty
   completed: Boolean
+  startTime: String
+  endTime: String
 }
 
-input StudyGoalInput {
-  title: String!
-  description: String
-  targetHours: Float!
-  deadline: String
-}
-
-input StudyGoalUpdateInput {
-  title: String
-  description: String
-  targetHours: Float
-  deadline: String
-  completed: Boolean
-}
-
-input SubjectInput {
-  name: String!
-  color: String
+input UserPreferencesInput {
+  theme: Theme
+  notifications: Boolean
+  dailyStudyGoal: Int
+  timezone: String
 }
 
 # Queries
 type Query {
   # User queries
   me: User
-
+  
+  # Task queries
+  tasks(
+    filter: TaskFilter = ALL
+    category: String
+    priority: Priority
+    limit: Int = 50
+    offset: Int = 0
+  ): [Task!]!
+  
+  task(id: ID!): Task
+  taskStats: TaskStats!
+  
   # Study Session queries
-  studySessions(limit: Int, offset: Int): [StudySession!]!
+  studySessions(
+    limit: Int = 20
+    offset: Int = 0
+  ): [StudySession!]!
+  
   studySession(id: ID!): StudySession
-  recentSessions(limit: Int): [StudySession!]!
-  sessionsBySubject(subject: String!): [StudySession!]!
-  sessionsByTimeRange(timeRange: TimeRange!): [StudySession!]!
-
-  # Study Goal queries
-  studyGoals: [StudyGoal!]!
-  studyGoal(id: ID!): StudyGoal
-  activeGoals: [StudyGoal!]!
-  completedGoals: [StudyGoal!]!
-
-  # Subject queries
-  subjects: [Subject!]!
-  subject(id: ID!): Subject
-  topSubjects(limit: Int): [Subject!]!
-
-  # Statistics queries
-  studyStats(timeRange: TimeRange): StudyStats!
-  dailyProgress(days: Int): [DailyProgress!]!
-  weeklyProgress(weeks: Int): [WeeklyProgress!]!
-  monthlyProgress(months: Int): [MonthlyProgress!]!
-}
-
-# Progress Types
-type DailyProgress {
-  date: String!
-  hours: Float!
-  sessions: Int!
-}
-
-type WeeklyProgress {
-  week: String!
-  hours: Float!
-  sessions: Int!
-}
-
-type MonthlyProgress {
-  month: String!
-  hours: Float!
-  sessions: Int!
+  recentSessions(limit: Int = 5): [StudySession!]!
+  
+  # Health check
+  health: String
 }
 
 # Mutations
 type Mutation {
   # Authentication mutations
-  signup(
-    firebaseUid: String!
-    name: String!
-    email: String!
-    avatar: String
-  ): AuthPayload!
-
-  login(
-    firebaseUid: String!
-    email: String!
-  ): AuthPayload!
-
-  updateProfile(
-    name: String
-    avatar: String
-  ): User!
-
+  loginWithGoogle(idToken: String!): AuthPayload!
+  
+  # Task mutations
+  createTask(input: TaskInput!): Task!
+  updateTask(id: ID!, input: TaskUpdateInput!): Task!
+  deleteTask(id: ID!): Boolean!
+  toggleTaskComplete(id: ID!): Task!
+  
+  # Bulk task operations
+  createMultipleTasks(tasks: [TaskInput!]!): [Task!]!
+  deleteMultipleTasks(ids: [ID!]!): Boolean!
+  markMultipleTasksComplete(ids: [ID!]!): [Task!]!
+  
   # Study Session mutations
   createStudySession(input: StudySessionInput!): StudySession!
   updateStudySession(id: ID!, input: StudySessionUpdateInput!): StudySession!
   deleteStudySession(id: ID!): Boolean!
   startStudySession(subject: String!, topic: String!): StudySession!
   endStudySession(id: ID!, notes: String, difficulty: Difficulty): StudySession!
-
-  # Study Goal mutations
-  createStudyGoal(input: StudyGoalInput!): StudyGoal!
-  updateStudyGoal(id: ID!, input: StudyGoalUpdateInput!): StudyGoal!
-  deleteStudyGoal(id: ID!): Boolean!
-  completeStudyGoal(id: ID!): StudyGoal!
-
-  # Subject mutations
-  createSubject(input: SubjectInput!): Subject!
-  updateSubject(id: ID!, name: String, color: String): Subject!
-  deleteSubject(id: ID!): Boolean!
-
-  # Utility mutations
-  resetProgress: Boolean!
-  exportData: String! # Returns JSON string of user data
-}
-
-# Subscriptions (optional, for real-time updates)
-type Subscription {
-  studySessionUpdated: StudySession!
-  goalCompleted: StudyGoal!
-  newPersonalRecord: StudyStats!
-}
-type Mutation {
-  # Authentication mutations
-  signup(
-    firebaseUid: String!
-    name: String!
-    email: String!
-    avatar: String
-  ): AuthPayload!
-
-  login(
-    firebaseUid: String!
-    email: String!
-  ): AuthPayload!
-
-  # Add this missing mutation
-  loginWithGoogle(
-    idToken: String!
-  ): AuthPayload!
-
-  updateProfile(
-    name: String
-    avatar: String
-  ): User!
-
   
+  # User mutations
+  updateProfile(name: String, avatar: String): User!
+  updatePreferences(input: UserPreferencesInput!): User!
+  
+  # Utility mutations
+  resetUserData: Boolean!
+  exportUserData: String! # Returns JSON string of user data
+}
+
+# Subscriptions (for real-time updates)
+type Subscription {
+  taskUpdated: Task!
+  taskCreated: Task!
+  taskDeleted: ID!
+  studySessionUpdated: StudySession!
 }
