@@ -306,3 +306,47 @@
     </script>
 </body>
 </html>
+
+
+
+You are an expert full-stack developer specializing in modern web applications using React (or similar frontend frameworks), Node.js/Express (or equivalent backend), and databases like MongoDB or PostgreSQL. I have an existing project codebase that includes a dashboard with various components, user authentication (login/signup), and integration with APIs and a database. All API endpoints, private keys, and environment variables are already provided in .env files for secure configuration (e.g., database URI, API keys, etc.). The project currently has bugs (such as incomplete functionality, errors in component rendering, or API calls failing), a clumsy and unprofessional UI design, and lacks proper theming, dummy data for testing, and default user setups.
+Your task is to generate an improved, bug-free version of the entire project codebase. Focus on the following key improvements:
+Bug Removal and Functionality Fixes:
+
+Thoroughly debug the entire application: Fix any runtime errors, console warnings, broken API calls, authentication issues, or component crashes. Ensure smooth user flows for login, signup, dashboard navigation, and any other features (e.g., data tracking or display components).
+Implement proper error handling: Add try-catch blocks, user-friendly error messages (e.g., toasts or modals), and fallback states for failed API requests or database operations.
+Ensure proper database connection: Use the .env file variables to connect to the database securely (e.g., via Mongoose for MongoDB or Prisma/Sequelize for SQL). Handle connection pooling, retries on failure, and secure queries to prevent SQL injection or NoSQL vulnerabilities. Test all CRUD operations to confirm they work without errors.
+
+UI Design Improvements:
+
+Redesign the entire UI to look ultra-premium, professional, and modern: Make it clean, intuitive, and visually appealing with high-quality layouts. Avoid clutter—use whitespace effectively, responsive grids, subtle animations (e.g., via Framer Motion or CSS transitions), and consistent typography (e.g., using Google Fonts like Inter or Roboto for a polished feel).
+Dashboard overhaul: The current dashboard is clumsy with components just dumped in place. Restructure it into a modular, organized layout: Use a sidebar for navigation, a header with logo and user profile, a main content area with cards or sections for components, and a footer if needed. Ensure responsiveness for mobile, tablet, and desktop (use media queries or a framework like Tailwind CSS for this).
+Logo and Title: Update the main logo/title to exactly "<track>" (styled as code-like, e.g., in a monospace font with angle brackets highlighted). Place it prominently in the header or navbar, and make it clickable to return to the dashboard home.
+Icons: Replace all regular icons with Material Icons (from @mui/icons-material if using Material-UI, or Google's Material Icons library). Ensure they are used consistently (e.g., for buttons, menus, alerts) and are scalable/vector-based for crisp rendering.
+Themes: Implement exactly 2 themes:
+
+Dark Theme: Use a sophisticated dark palette (e.g., #121212 background, #FFFFFF text, accents in #BB86FC or similar). Make it the default.
+Light Gradient Color Theme: Use a light base with subtle gradients (e.g., background linear-gradient from #F0F4F8 to #FFFFFF, text #333333, accents in #03DAC6). Include a theme toggle switch in the user settings or header to switch between them seamlessly (use React Context or Redux for theme state management, and CSS variables for easy theming).
+
+
+Ultra-Premium Quality: Elevate the UI to feel luxurious—use high-end design elements like glassmorphism (subtle blur effects), neumorphism (soft shadows), premium color schemes, smooth hover/focus states, and accessible contrasts (AA/AAA WCAG compliance). Add micro-interactions (e.g., button ripples, loading spinners) for a polished experience.
+
+Data Handling and Testing:
+
+Display Dummy Data: For all components (e.g., dashboards, lists, charts, profiles), implement dummy/mock data to populate them during development and testing. Use libraries like Faker.js for realistic dummy data if needed. This should be toggleable (e.g., via an environment variable like USE_MOCK_DATA=true in .env) so real API/database data can replace it in production.
+Default User Setup: On successful account creation or login:
+
+Automatically provision default data for the user (e.g., sample tracking items, default preferences, or placeholder dashboard widgets).
+Ensure this happens via backend hooks (e.g., post-signup middleware) and is stored in the database.
+All users should see these defaults immediately upon first login, with options to customize later.
+
+
+
+General Enhancements:
+
+Performance Optimizations: Add lazy loading for components/images, memoization (e.g., React.memo), and efficient API calls (e.g., debouncing searches). Minimize bundle size if using bundlers like Vite or Webpack.
+Security: Use best practices like JWT for authentication, input sanitization, and HTTPS enforcement. Leverage .env for all secrets.
+Code Quality: Refactor code for readability—use ESLint/Prettier for formatting, modular components/files, and clear comments. If the project uses a framework like Next.js or Create React App, ensure it's up-to-date.
+Testing: Include basic unit/integration tests (e.g., with Jest/React Testing Library) for key components and flows, especially around dummy data and defaults.
+
+Output the complete improved codebase in a structured format: Separate frontend and backend files/folders, include updated package.json if dependencies change (e.g., add @mui/material for Material-UI if not present, but assume core deps like React are already there). Provide installation/run instructions. If any assumptions are made about the stack (e.g., React + Node), state them clearly.
