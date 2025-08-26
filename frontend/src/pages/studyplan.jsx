@@ -1,196 +1,215 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { AppLayout } from "../App.js";
-import AiAssistentWidget from "./aiassistentWidget.jsx"
-import "../styles.css";
+import React, { useState } from 'react';
+import { Container, Row, Col, Card, Button, Form, Badge, Modal, ProgressBar } from 'react-bootstrap';
 
-export default function StudyPlan() {
-  const navigate = useNavigate();
-  const [confidence, setConfidence] = useState(60);
-  const [tasks, setTasks] = useState([
-    { id: "task1", text: "Understand the core concept of two pointers.", completed: true },
-    { id: "task2", text: "Implement basic examples (e.g., reversing an array).", completed: true },
-    { id: "task3", text: "Solve 5 easy problems with arrays on LeetCode.", completed: false },
-    { id: "task4", text: "Practice common patterns (fast/slow pointers).", completed: false },
+const StudyPlan = () => {
+  const [showModal, setShowModal] = useState(false);
+  const [plans, setPlans] = useState([
+    {
+      id: 1,
+      title: 'Mathematics Mastery',
+      description: 'Complete calculus and linear algebra fundamentals',
+      progress: 65,
+      dueDate: '2025-09-15',
+      status: 'active',
+      topics: ['Calculus', 'Linear Algebra', 'Statistics']
+    },
+    {
+      id: 2,
+      title: 'Computer Science Fundamentals',
+      description: 'Data structures, algorithms, and programming concepts',
+      progress: 30,
+      dueDate: '2025-10-30',
+      status: 'active',
+      topics: ['Data Structures', 'Algorithms', 'Programming']
+    },
+    {
+      id: 3,
+      title: 'Physics Review',
+      description: 'Classical mechanics and thermodynamics review',
+      progress: 100,
+      dueDate: '2025-08-20',
+      status: 'completed',
+      topics: ['Mechanics', 'Thermodynamics']
+    }
   ]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newTaskText, setNewTaskText] = useState("");
 
-  // Calculate completion percentage
-  const completionPercentage = Math.round(
-    (tasks.filter((task) => task.completed).length / tasks.length) * 100
-  );
+  const [newPlan, setNewPlan] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    topics: ''
+  });
 
-  // Handle task completion toggle
-  const handleToggleTask = (id) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const plan = {
+      id: plans.length + 1,
+      ...newPlan,
+      progress: 0,
+      status: 'active',
+      topics: newPlan.topics.split(',').map(topic => topic.trim())
+    };
+    setPlans([...plans, plan]);
+    setNewPlan({ title: '', description: '', dueDate: '', topics: '' });
+    setShowModal(false);
   };
 
-  // Handle adding a new task
-  const handleAddTask = (e) => {
-    e.preventDefault();
-    if (newTaskText.trim()) {
-      setTasks((prevTasks) => [
-        ...prevTasks,
-        { id: `task${prevTasks.length + 1}`, text: newTaskText, completed: false },
-      ]);
-      setNewTaskText("");
-      setIsModalOpen(false);
+  const getStatusVariant = (status) => {
+    switch (status) {
+      case 'completed': return 'success';
+      case 'active': return 'primary';
+      case 'overdue': return 'danger';
+      default: return 'secondary';
     }
   };
 
-  // Handle back navigation
-  const handleBack = () => {
-    navigate(-1);
+  const getProgressVariant = (progress) => {
+    if (progress >= 80) return 'success';
+    if (progress >= 50) return 'info';
+    if (progress >= 25) return 'warning';
+    return 'danger';
   };
 
   return (
-    <AppLayout pageTitle="Study Plan: Two Pointers">
-      <div className="study-plan-layout">
-        <div className="card study-plan-card">
-          <div className="card-header">
-            <h2>Learning Path</h2>
-            <div className="card-actions">
-              <button
-                onClick={handleBack}
-                className="btn study-plan-btn-secondary icon-btn"
-                aria-label="Go back"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--text-primary)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="btn study-plan-btn-primary"
-                aria-label="Add new task"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--accent-text)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icon"
-                >
-                  <path d="M12 5v14m-7-7h14" />
-                </svg>
-                Add Task
-              </button>
+    <Container className="py-4">
+      <Row className="mb-4">
+        <Col>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <h1 className="display-6 fw-bold mb-2">Study Plans</h1>
+              <p className="text-muted">Organize and track your learning goals</p>
             </div>
+            <Button 
+              variant="primary" 
+              size="lg"
+              onClick={() => setShowModal(true)}
+              className="btn-study-primary"
+            >
+              + New Plan
+            </Button>
           </div>
-          <div className="card-body">
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${completionPercentage}%` }}
-              ></div>
+        </Col>
+      </Row>
+
+      {/* Plans Grid */}
+      <Row className="g-4">
+        {plans.map(plan => (
+          <Col lg={4} md={6} key={plan.id}>
+            <Card className="border-0 shadow-sm card-hover h-100">
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start mb-3">
+                  <Badge bg={getStatusVariant(plan.status)} className="text-capitalize">
+                    {plan.status}
+                  </Badge>
+                  <small className="text-muted">
+                    Due: {new Date(plan.dueDate).toLocaleDateString()}
+                  </small>
+                </div>
+                
+                <Card.Title className="h5 mb-3">{plan.title}</Card.Title>
+                <Card.Text className="text-muted mb-3">{plan.description}</Card.Text>
+                
+                <div className="mb-3">
+                  <div className="d-flex justify-content-between mb-2">
+                    <small className="text-muted">Progress</small>
+                    <small className="fw-semibold">{plan.progress}%</small>
+                  </div>
+                  <ProgressBar 
+                    now={plan.progress} 
+                    variant={getProgressVariant(plan.progress)}
+                    className="mb-3"
+                  />
+                </div>
+                
+                <div className="mb-3">
+                  <small className="text-muted d-block mb-2">Topics:</small>
+                  <div className="d-flex flex-wrap gap-1">
+                    {plan.topics.map((topic, index) => (
+                      <Badge key={index} bg="light" text="dark" className="fw-normal">
+                        {topic}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="d-grid gap-2">
+                  <Button variant="outline-primary" size="sm">
+                    View Details
+                  </Button>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
+      {/* New Plan Modal */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Create New Study Plan</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Plan Title</Form.Label>
+              <Form.Control
+                type="text"
+                value={newPlan.title}
+                onChange={(e) => setNewPlan({...newPlan, title: e.target.value})}
+                placeholder="Enter study plan title"
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={newPlan.description}
+                onChange={(e) => setNewPlan({...newPlan, description: e.target.value})}
+                placeholder="Describe your study goals and objectives"
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>Due Date</Form.Label>
+              <Form.Control
+                type="date"
+                value={newPlan.dueDate}
+                onChange={(e) => setNewPlan({...newPlan, dueDate: e.target.value})}
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-4">
+              <Form.Label>Topics (comma-separated)</Form.Label>
+              <Form.Control
+                type="text"
+                value={newPlan.topics}
+                onChange={(e) => setNewPlan({...newPlan, topics: e.target.value})}
+                placeholder="e.g., Algebra, Calculus, Statistics"
+                required
+              />
+              <Form.Text className="text-muted">
+                Separate multiple topics with commas
+              </Form.Text>
+            </Form.Group>
+            
+            <div className="d-flex gap-2">
+              <Button variant="secondary" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" className="btn-study-primary">
+                Create Plan
+              </Button>
             </div>
-            <p className="progress-text">Progress: {completionPercentage}% Complete</p>
-            {tasks.map((task) => (
-              <div key={task.id} className="task-item">
-                <input
-                  type="checkbox"
-                  id={task.id}
-                  checked={task.completed}
-                  onChange={() => handleToggleTask(task.id)}
-                  aria-label={`Toggle completion for ${task.text}`}
-                />
-                <label
-                  htmlFor={task.id}
-                  className={`task-label ${task.completed ? "completed" : ""}`}
-                >
-                  {task.text}
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="card confidence-slider">
-          <div className="card-header">
-            <h2>Confidence Level</h2>
-          </div>
-          <div className="card-body">
-            <p className="confidence-text">{confidence}% Confident</p>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={confidence}
-              onChange={(e) => setConfidence(e.target.value)}
-              className="confidence-range"
-              aria-label={`Set confidence level to ${confidence}%`}
-            />
-          </div>
-        </div>
-      </div>
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>Add New Task</h2>
-            <form onSubmit={handleAddTask}>
-              <div className="input-group">
-                <label htmlFor="new-task">Task Description</label>
-                <textarea
-                  id="new-task"
-                  value={newTaskText}
-                  onChange={(e) => setNewTaskText(e.target.value)}
-                  placeholder="Enter task description"
-                  required
-                  className="task-input"
-                />
-              </div>
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn study-plan-btn-secondary"
-                  onClick={() => setIsModalOpen(false)}
-                  aria-label="Cancel adding task"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn study-plan-btn-primary"
-                  aria-label="Add new task"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="var(--accent-text)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="icon"
-                  >
-                    <path d="M12 5v14m-7-7h14" />
-                  </svg>
-                  Add Task
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </AppLayout>
+          </Form>
+        </Modal.Body>
+      </Modal>
+    </Container>
   );
-}
+};
+
+export default StudyPlan;

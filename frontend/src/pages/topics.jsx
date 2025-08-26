@@ -1,379 +1,337 @@
-import React, { useState } from "react";
-import { AppLayout } from "../App.js";
-import "../styles.css";
+import React, { useState } from 'react';
+import { Container, Row, Col, Card, Button, Form, Badge, Modal, InputGroup } from 'react-bootstrap';
 
-const initialTopics = {
-  "DSA": [
+const Topics = () => {
+  const [showModal, setShowModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  
+  const [topics, setTopics] = useState([
     {
-      title: "Two Pointers",
-      problems: [
-        { name: "Pair with Target Sum", link: "https://leetcode.com/problems/two-sum/", done: true },
-        { name: "Remove Duplicates", link: "https://leetcode.com/problems/remove-duplicates-from-sorted-array/", done: true },
-        { name: "Squaring a Sorted Array", link: "https://leetcode.com/problems/squares-of-a-sorted-array/", done: false },
-      ]
+      id: 1,
+      title: 'Calculus I',
+      category: 'Mathematics',
+      difficulty: 'Intermediate',
+      progress: 75,
+      totalLessons: 12,
+      completedLessons: 9,
+      description: 'Limits, derivatives, and basic integration techniques',
+      tags: ['Limits', 'Derivatives', 'Integration']
     },
     {
-      title: "Sliding Window",
-      problems: [
-        { name: "Maximum Sum Subarray of Size K", link: "https://leetcode.com/problems/maximum-average-subarray-i/", done: false },
-      ]
+      id: 2,
+      title: 'Data Structures',
+      category: 'Computer Science',
+      difficulty: 'Advanced',
+      progress: 45,
+      totalLessons: 16,
+      completedLessons: 7,
+      description: 'Arrays, linked lists, trees, graphs, and hash tables',
+      tags: ['Arrays', 'Trees', 'Graphs', 'Hash Tables']
+    },
+    {
+      id: 3,
+      title: 'Classical Physics',
+      category: 'Physics',
+      difficulty: 'Beginner',
+      progress: 90,
+      totalLessons: 10,
+      completedLessons: 9,
+      description: 'Newton\'s laws, energy, momentum, and motion',
+      tags: ['Mechanics', 'Energy', 'Motion']
+    },
+    {
+      id: 4,
+      title: 'Organic Chemistry',
+      category: 'Chemistry',
+      difficulty: 'Advanced',
+      progress: 20,
+      totalLessons: 14,
+      completedLessons: 3,
+      description: 'Carbon compounds, functional groups, and reactions',
+      tags: ['Organic', 'Reactions', 'Compounds']
     }
-  ],
-  "System Design": []
-};
+  ]);
 
-const aiResponses = {
-  "Two Pointers": "The Two Pointers technique involves using two indices to traverse an array or list from different positions, often to find pairs or optimize searches in sorted data.",
-  "Sliding Window": "The Sliding Window technique maintains a window of elements and adjusts its size to find optimal subarrays or substrings that satisfy certain conditions.",
-  "Pair with Target Sum": `Here's a sample solution for "Pair with Target Sum":
-\`\`\`python
-def twoSum(nums, target):
-    left, right = 0, len(nums) - 1
-    while left < right:
-        curr_sum = nums[left] + nums[right]
-        if curr_sum == target:
-            return [left, right]
-        elif curr_sum < target:
-            left += 1
-        else:
-            right -= 1
-    return []
-\`\`\`
-This uses two pointers to find a pair summing to the target in a sorted array.`,
-  "Remove Duplicates": `Here's a sample solution for "Remove Duplicates":
-\`\`\`python
-def removeDuplicates(nums):
-    if not nums:
-        return 0
-    write_pointer = 1
-    for read_pointer in range(1, len(nums)):
-        if nums[read_pointer] != nums[write_pointer - 1]:
-            nums[write_pointer] = nums[read_pointer]
-            write_pointer += 1
-    return write_pointer
-\`\`\`
-This uses two pointers to remove duplicates in-place from a sorted array.`,
-  "Squaring a Sorted Array": `Here's a sample solution for "Squaring a Sorted Array":
-\`\`\`python
-def sortedSquares(nums):
-    n = len(nums)
-    result = [0] * n
-    left, right, pos = 0, n - 1, n - 1
-    while left <= right:
-        left_square = nums[left] * nums[left]
-        right_square = nums[right] * nums[right]
-        if left_square > right_square:
-            result[pos] = left_square
-            left += 1
-        else:
-            result[pos] = right_square
-            right -= 1
-        pos -= 1
-    return result
-\`\`\`
-This uses two pointers to square and sort the array efficiently.`,
-  "Maximum Sum Subarray of Size K": `Here's a sample solution for "Maximum Sum Subarray of Size K":
-\`\`\`python
-def maxSumSubarray(nums, k):
-    window_sum = sum(nums[:k])
-    max_sum = window_sum
-    for i in range(len(nums) - k):
-        window_sum = window_sum - nums[i] + nums[i + k]
-        max_sum = max(max_sum, window_sum)
-    return max_sum
-\`\`\`
-This uses a sliding window to find the maximum sum subarray of size K.`,
-};
+  const [newTopic, setNewTopic] = useState({
+    title: '',
+    category: '',
+    difficulty: 'Beginner',
+    description: '',
+    tags: '',
+    totalLessons: ''
+  });
 
-const AddTopicModal = ({ onAdd, onCancel }) => {
-  const [title, setTitle] = useState('');
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2>Add New Topic</h2>
-        <div className="input-group">
-          <label htmlFor="topic-title">Topic Title</label>
-          <input id="topic-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g., System Design" />
-        </div>
-        <div className="modal-actions">
-          <button onClick={onCancel} className="btn topics-btn-secondary">Cancel</button>
-          <button onClick={() => onAdd(title)} className="btn topics-btn-primary">Add Topic</button>
-        </div>
-      </div>
-    </div>
-  );
-};
+  const categories = ['all', 'Mathematics', 'Computer Science', 'Physics', 'Chemistry'];
+  const difficulties = ['Beginner', 'Intermediate', 'Advanced'];
 
-const AddSubtopicModal = ({ onAdd, onCancel }) => {
-  const [title, setTitle] = useState('');
-  const [problems, setProblems] = useState('');
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2>Add New Subtopic</h2>
-        <div className="input-group">
-          <label htmlFor="subtopic-title">Subtopic Title</label>
-          <input id="subtopic-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g., Two Pointers" />
-        </div>
-        <div className="input-group">
-          <label htmlFor="problems">Problems (one per line, format: Problem Name | LeetCode Link)</label>
-          <textarea id="problems" value={problems} onChange={e => setProblems(e.target.value)} rows="5" placeholder="Pair with Target Sum | https://leetcode.com/problems/two-sum/"></textarea>
-        </div>
-        <div className="modal-actions">
-          <button onClick={onCancel} className="btn topics-btn-secondary">Cancel</button>
-          <button onClick={() => onAdd(title, problems)} className="btn topics-btn-primary">Add Subtopic</button>
-        </div>
-      </div>
-    </div>
-  );
-};
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const topic = {
+      id: topics.length + 1,
+      ...newTopic,
+      progress: 0,
+      completedLessons: 0,
+      totalLessons: parseInt(newTopic.totalLessons),
+      tags: newTopic.tags.split(',').map(tag => tag.trim())
+    };
+    setTopics([...topics, topic]);
+    setNewTopic({
+      title: '',
+      category: '',
+      difficulty: 'Beginner',
+      description: '',
+      tags: '',
+      totalLessons: ''
+    });
+    setShowModal(false);
+  };
 
-const AddProblemModal = ({ subtopicTitle, onAdd, onCancel }) => {
-  const [name, setName] = useState('');
-  const [link, setLink] = useState('');
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2>Add Problem to {subtopicTitle}</h2>
-        <div className="input-group">
-          <label htmlFor="problem-name">Problem Name</label>
-          <input id="problem-name" type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Pair with Target Sum" />
-        </div>
-        <div className="input-group">
-          <label htmlFor="problem-link">LeetCode Link (Optional)</label>
-          <input id="problem-link" type="text" value={link} onChange={e => setLink(e.target.value)} placeholder="e.g., https://leetcode.com/problems/two-sum/" />
-        </div>
-        <div className="modal-actions">
-          <button onClick={onCancel} className="btn topics-btn-secondary">Cancel</button>
-          <button onClick={() => onAdd(name, link)} className="btn topics-btn-primary">Add Problem</button>
-        </div>
-      </div>
-    </div>
-  );
-};
+  const filteredTopics = topics.filter(topic => {
+    const matchesSearch = topic.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         topic.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || topic.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
-const AIHelpModal = ({ title, onClose }) => {
-  const response = aiResponses[title] || `Here's a quick explanation for ${title}: [Placeholder AI response for this topic/problem].`;
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h2>Quick AI Help: {title}</h2>
-        <div className="ai-response">{response}</div>
-        <div className="modal-actions">
-          <button onClick={onClose} className="btn topics-btn-secondary">Close</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default function Topics() {
-  const [topics, setTopics] = useState(initialTopics);
-  const [selectedTopic, setSelectedTopic] = useState("DSA");
-  const [showAddTopicModal, setShowAddTopicModal] = useState(false);
-  const [showAddSubtopicModal, setShowAddSubtopicModal] = useState(false);
-  const [showAddProblemModal, setShowAddProblemModal] = useState(false);
-  const [selectedSubtopic, setSelectedSubtopic] = useState(null);
-  const [showAIHelpModal, setShowAIHelpModal] = useState(false);
-  const [aiHelpTitle, setAIHelpTitle] = useState('');
-
-  const handleAddTopic = (title) => {
-    if (title && !topics[title]) {
-      setTopics({ ...topics, [title]: [] });
-      setSelectedTopic(title);
+  const getDifficultyVariant = (difficulty) => {
+    switch (difficulty) {
+      case 'Beginner': return 'success';
+      case 'Intermediate': return 'warning';
+      case 'Advanced': return 'danger';
+      default: return 'secondary';
     }
-    setShowAddTopicModal(false);
   };
 
-  const handleAddSubtopic = (title, problemsText) => {
-    if (title && problemsText) {
-      const problemList = problemsText.split('\n').filter(p => p.trim() !== '').map(line => {
-        const [name, link] = line.split('|').map(part => part.trim());
-        return { name, link: link || '', done: false };
-      });
-      const newSubtopics = [...topics[selectedTopic], { title, problems: problemList }];
-      setTopics({ ...topics, [selectedTopic]: newSubtopics });
-    }
-    setShowAddSubtopicModal(false);
-  };
-
-  const handleAddProblem = (subtopicTitle, name, link) => {
-    if (name) {
-      const newTopics = { ...topics };
-      const subtopicIndex = newTopics[selectedTopic].findIndex(sub => sub.title === subtopicTitle);
-      if (subtopicIndex !== -1) {
-        newTopics[selectedTopic][subtopicIndex].problems.push({ name, link: link || '', done: false });
-        setTopics(newTopics);
-      }
-    }
-    setShowAddProblemModal(false);
-    setSelectedSubtopic(null);
-  };
-
-  const toggleProblem = (subtopicIndex, problemIndex) => {
-    const newTopics = { ...topics };
-    newTopics[selectedTopic][subtopicIndex].problems[problemIndex].done = !newTopics[selectedTopic][subtopicIndex].problems[problemIndex].done;
-    setTopics(newTopics);
-  };
-
-  const handleShowAIHelp = (title) => {
-    setAIHelpTitle(title);
-    setShowAIHelpModal(true);
-  };
-
-  const handleShowAddProblem = (subtopicTitle) => {
-    setSelectedSubtopic(subtopicTitle);
-    setShowAddProblemModal(true);
+  const getProgressVariant = (progress) => {
+    if (progress >= 80) return 'success';
+    if (progress >= 50) return 'info';
+    if (progress >= 25) return 'warning';
+    return 'danger';
   };
 
   return (
-    <AppLayout pageTitle="Topics">
-      {showAddTopicModal && <AddTopicModal onAdd={handleAddTopic} onCancel={() => setShowAddTopicModal(false)} />}
-      {showAddSubtopicModal && <AddSubtopicModal onAdd={handleAddSubtopic} onCancel={() => setShowAddSubtopicModal(false)} />}
-      {showAddProblemModal && (
-        <AddProblemModal
-          subtopicTitle={selectedSubtopic}
-          onAdd={(name, link) => handleAddProblem(selectedSubtopic, name, link)}
-          onCancel={() => setShowAddProblemModal(false)}
-        />
-      )}
-      {showAIHelpModal && <AIHelpModal title={aiHelpTitle} onClose={() => setShowAIHelpModal(false)} />}
-      <div className="topics-layout">
-        <div className="card topics-list">
-          <div className="card-header">
-            <h2>All Topics</h2>
-            <button onClick={() => setShowAddTopicModal(true)} className="btn topics-btn-primary icon-btn" aria-label="Add new topic">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--accent-text)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="icon"
-              >
-                <path d="M12 5v14" />
-                <path d="M5 12h14" />
-              </svg>
-            </button>
+    <Container className="py-4">
+      <Row className="mb-4">
+        <Col>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <h1 className="display-6 fw-bold mb-2">Study Topics</h1>
+              <p className="text-muted">Manage your learning subjects and track progress</p>
+            </div>
+            <Button 
+              variant="primary" 
+              size="lg"
+              onClick={() => setShowModal(true)}
+              className="btn-study-primary"
+            >
+              + Add Topic
+            </Button>
           </div>
-          <div className="card-body">
-            {Object.keys(topics).map((topicName) => (
-              <div
-                key={topicName}
-                className={`topic-item ${selectedTopic === topicName ? 'active' : ''}`}
-                onClick={() => setSelectedTopic(topicName)}
-              >
-                {topicName}
-              </div>
+        </Col>
+      </Row>
+
+      {/* Filters */}
+      <Row className="mb-4">
+        <Col md={6}>
+          <InputGroup>
+            <InputGroup.Text>🔍</InputGroup.Text>
+            <Form.Control
+              type="text"
+              placeholder="Search topics..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </InputGroup>
+        </Col>
+        <Col md={6}>
+          <Form.Select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            {categories.map(category => (
+              <option key={category} value={category}>
+                {category === 'all' ? 'All Categories' : category}
+              </option>
             ))}
-          </div>
-        </div>
-        <div className="card topic-details">
-          <div className="card-header">
-            <h2>{selectedTopic}</h2>
-            <button onClick={() => setShowAddSubtopicModal(true)} className="btn topics-btn-primary">Add Subtopic</button>
-          </div>
-          <div className="card-body">
-            {topics[selectedTopic]?.length > 0 ? (
-              topics[selectedTopic].map((subtopic, subIndex) => (
-                <div key={subIndex} className="subtopic-item">
-                  <div className="subtopic-header">
-                    <h3>{subtopic.title}</h3>
-                    <div className="subtopic-actions">
-                      <button
-                        onClick={() => handleShowAIHelp(subtopic.title)}
-                        className="btn topics-btn-secondary"
-                        aria-label={`Quick AI help for ${subtopic.title}`}
-                      >
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="var(--text-primary)"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="icon"
-                        >
-                          <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-                          <path d="M12 12l3 3" />
-                          <path d="M12 7v5" />
-                        </svg>
-                        Quick AI Help
-                      </button>
-                      <button
-                        onClick={() => handleShowAddProblem(subtopic.title)}
-                        className="btn topics-btn-primary icon-btn"
-                        aria-label={`Add problem to ${subtopic.title}`}
-                      >
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="var(--accent-text)"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="icon"
-                        >
-                          <path d="M12 5v14" />
-                          <path d="M5 12h14" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  {subtopic.problems.map((problem, probIndex) => (
-                    <div key={probIndex} className="problem-item">
-                      <input
-                        type="checkbox"
-                        id={`${subIndex}-${probIndex}`}
-                        checked={problem.done}
-                        onChange={() => toggleProblem(subIndex, probIndex)}
-                      />
-                      <label htmlFor={`${subIndex}-${probIndex}`} className="problem-label">
-                        {problem.link ? (
-                          <a href={problem.link} target="_blank" rel="noopener noreferrer">{problem.name}</a>
-                        ) : (
-                          problem.name
-                        )}
-                      </label>
-                      <button
-                        onClick={() => handleShowAIHelp(problem.name)}
-                        className="btn topics-btn-secondary"
-                        aria-label={`Quick AI help for ${problem.name}`}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="var(--text-primary)"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="icon"
-                        >
-                          <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-                          <path d="M12 12l3 3" />
-                          <path d="M12 7v5" />
-                        </svg>
-                        Code Sample
-                      </button>
-                    </div>
-                  ))}
+          </Form.Select>
+        </Col>
+      </Row>
+
+      {/* Topics Grid */}
+      <Row className="g-4">
+        {filteredTopics.map(topic => (
+          <Col lg={6} xl={4} key={topic.id}>
+            <Card className="border-0 shadow-sm card-hover h-100">
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start mb-3">
+                  <Badge bg={getDifficultyVariant(topic.difficulty)}>
+                    {topic.difficulty}
+                  </Badge>
+                  <small className="text-muted">{topic.category}</small>
                 </div>
-              ))
-            ) : (
-              <p className="no-subtopics">No subtopics yet. Click "Add Subtopic" to get started.</p>
-            )}
-          </div>
-        </div>
-      </div>
-    </AppLayout>
+                
+                <Card.Title className="h5 mb-3">{topic.title}</Card.Title>
+                <Card.Text className="text-muted mb-3">{topic.description}</Card.Text>
+                
+                <div className="mb-3">
+                  <div className="d-flex justify-content-between mb-2">
+                    <small className="text-muted">Progress</small>
+                    <small className="fw-semibold">
+                      {topic.completedLessons}/{topic.totalLessons} lessons ({topic.progress}%)
+                    </small>
+                  </div>
+                  <div className="progress" style={{ height: '6px' }}>
+                    <div 
+                      className={`progress-bar bg-${getProgressVariant(topic.progress)}`}
+                      role="progressbar" 
+                      style={{ width: `${topic.progress}%` }}
+                      aria-valuenow={topic.progress} 
+                      aria-valuemin="0" 
+                      aria-valuemax="100"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mb-3">
+                  <small className="text-muted d-block mb-2">Tags:</small>
+                  <div className="d-flex flex-wrap gap-1">
+                    {topic.tags.map((tag, index) => (
+                      <Badge key={index} bg="light" text="dark" className="fw-normal">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="d-grid gap-2 d-md-flex">
+                  <Button variant="primary" size="sm" className="flex-fill">
+                    Continue
+                  </Button>
+                  <Button variant="outline-secondary" size="sm">
+                    Details
+                  </Button>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
+      {filteredTopics.length === 0 && (
+        <Row>
+          <Col className="text-center py-5">
+            <div className="text-muted">
+              <div style={{ fontSize: '4rem' }}>📚</div>
+              <h4>No topics found</h4>
+              <p>Try adjusting your search or add a new topic to get started.</p>
+            </div>
+          </Col>
+        </Row>
+      )}
+
+      {/* Add Topic Modal */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Add New Topic</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleSubmit}>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Topic Title</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={newTopic.title}
+                    onChange={(e) => setNewTopic({...newTopic, title: e.target.value})}
+                    placeholder="Enter topic title"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Category</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={newTopic.category}
+                    onChange={(e) => setNewTopic({...newTopic, category: e.target.value})}
+                    placeholder="e.g., Mathematics, Physics"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Difficulty Level</Form.Label>
+                  <Form.Select
+                    value={newTopic.difficulty}
+                    onChange={(e) => setNewTopic({...newTopic, difficulty: e.target.value})}
+                  >
+                    {difficulties.map(level => (
+                      <option key={level} value={level}>{level}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Total Lessons</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    value={newTopic.totalLessons}
+                    onChange={(e) => setNewTopic({...newTopic, totalLessons: e.target.value})}
+                    placeholder="Number of lessons"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={newTopic.description}
+                onChange={(e) => setNewTopic({...newTopic, description: e.target.value})}
+                placeholder="Describe what this topic covers"
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-4">
+              <Form.Label>Tags (comma-separated)</Form.Label>
+              <Form.Control
+                type="text"
+                value={newTopic.tags}
+                onChange={(e) => setNewTopic({...newTopic, tags: e.target.value})}
+                placeholder="e.g., Algebra, Functions, Graphs"
+                required
+              />
+              <Form.Text className="text-muted">
+                Separate multiple tags with commas
+              </Form.Text>
+            </Form.Group>
+            
+            <div className="d-flex gap-2">
+              <Button variant="secondary" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" className="btn-study-primary">
+                Add Topic
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+    </Container>
   );
-}
+};
+
+export default Topics;
